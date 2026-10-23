@@ -26,7 +26,7 @@ This creates .paths.txt and .tree.txt text displays of the table structure descr
 Currently it is set up to process any `results_<img-name>.json file in the current directory, and
 produces the two output files for each other.
 
-The .paths files use " || " as the field separator (note the spaces around them) as this is unlikely to appear in a genuine column heading (whereas a "/" or ">" might do.
+The .paths files use " || " as the field separator (note the spaces around them) as this is unlikely to appear in a genuine column heading (whereas other options such as a "/" or ">" might do).
 
 Here are samples are both:
 
