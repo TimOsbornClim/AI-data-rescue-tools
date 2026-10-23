@@ -4,6 +4,21 @@ Many AI data rescue approaches encode a particular table structure using a JSON 
 
 But JSON files of table structures are not easy to read by humans nor are they easy to create.
 
+## Suggested workflow using the tools below
+
+1. Give an image of a data table to AI and ask it to identify the table structure (or more than one
+if the image contains multiple tables) and return it in a JSON file.
+
+2. Use show-table-structure.py to convert the JSON file into viewable .paths and .tree files.
+
+3. View these files to check if they match the actual table structure.
+
+4. If they do not match perfectly, then edit the .paths file so it is correct,
+
+5. Use mk-table-schema.py to create a JSON schema from the edited .paths file. This will warn about any neighbouring column headings that are slightly different, in case they are supposed to be the same but a typo has been introduced in one of them.
+
+
+
 ## show-table-structure.py
 
 This creates .paths.txt and .tree.txt text displays of the table structure described by JSON files.
@@ -13,19 +28,21 @@ produces the two output files for each other.  Here are samples are both:
 
 results_CORFU_1853_01.paths.txt
 ```text
-001 [depth=1] table_1 / Moon's Age.
-002 [depth=1] table_1 / Day of the Week.
-003 [depth=1] table_1 / Day of the Month.
-004 [depth=3] table_1 / Observations taken at 9.30 A.M. (Local Time). / Barometer. / Barometer. No. Reading.
-005 [depth=3] table_1 / Observations taken at 9.30 A.M. (Local Time). / Barometer. / Thermo-meter.
-006 [depth=3] table_1 / Observations taken at 9.30 A.M. (Local Time). / Barometer. / Reading corrected for Index error and Capillary ac-tion, and reduced to temperature of 32°.
-007 [depth=4] table_1 / Observations taken at 9.30 A.M. (Local Time). / Hygrometer. / Dry Bulb No. 4 / Correct-ed read-ing for Index error.
-008 [depth=4] table_1 / Observations taken at 9.30 A.M. (Local Time). / Hygrometer. / Wet Bulb No. 5 / Correct-ed read-ing for Index error.
-009 [depth=3] table_1 / Observations taken at 9.30 A.M. (Local Time). / Hygrometer. / Dew-point computed.
-010 [depth=3] table_1 / Observations taken at 9.30 A.M. (Local Time). / Hygrometer. / Humi-dity 0-1.
-011 [depth=3] table_1 / Observations taken at 9.30 A.M. (Local Time). / Wind. / Direction.
-012 [depth=3] table_1 / Observations taken at 9.30 A.M. (Local Time). / Wind. / Force in lbs per square foot.
-013 [depth=3] table_1 / Observations taken at 9.30 A.M. (Local Time). / Cloud. / 0-10.
+001 [depth=1] table_1 || Moon's Age.
+002 [depth=1] table_1 || Day of the Week.
+003 [depth=1] table_1 || Day of the Month.
+004 [depth=3] table_1 || Observations taken at 9.30 A.M. (Local Time). || Barometer. || Barometer. No. Reading.
+005 [depth=3] table_1 || Observations taken at 9.30 A.M. (Local Time). || Barometer. || Thermo-meter.
+006 [depth=3] table_1 || Observations taken at 9.30 A.M. (Local Time). || Barometer. || Reading corrected for Index error and Capillary ac-tion, and reduced to temperature of 32°.
+007 [depth=4] table_1 || Observations taken at 9.30 A.M. (Local Time). || Hygrometer. || Dry Bulb No. 4 || Correct-ed read-ing for Index error.
+008 [depth=4] table_1 || Observations taken at 9.30 A.M. (Local Time). || Hygrometer. || Wet Bulb No. 5 || Correct-ed read-ing for Index error.
+009 [depth=3] table_1 || Observations taken at 9.30 A.M. (Local Time). || Hygrometer. || Dew-point computed.
+010 [depth=3] table_1 || Observations taken at 9.30 A.M. (Local Time). || Hygrometer. || Humi-dity 0-1.
+011 [depth=3] table_1 || Observations taken at 9.30 A.M. (Local Time). || Wind. || Direction.
+012 [depth=3] table_1 || Observations taken at 9.30 A.M. (Local Time). || Wind. || Force in lbs per square foot.
+013 [depth=3] table_1 || Observations taken at 9.30 A.M. (Local Time). || Cloud. || 0-10.
+014 [depth=4] table_1 || Observations taken at 9.30 A.M. (Local Time). || Self-Registering Thermometers. || Dry. || Max. in Sun's rays. No. 1
+015 [depth=4] table_1 || Observations taken at 9.30 A.M. (Local Time). || Self-Registering Thermometers. || Dry. || Min. on Grass. No. 2
 ```
 
 results_CORFU_1853_01.tree.txt
@@ -51,4 +68,25 @@ table_1
 │   │   └── Force in lbs per square foot. [012]
 │   └── Cloud.
 │       └── 0-10. [013]
+├── Observations taken at 9.30 A.M. (Local Time).
+│   ├── Self-Registering Thermometers.
+│   │   ├── Dry.
+│   │   │   ├── Max. in Sun's rays. No. 1 [014]
+│   │   │   ├── Min. on Grass. No. 2 [015]
 ```
+
+
+
+## mk-table-schema.py
+
+This creates a JSON table structure schema file from a .paths.txt file.
+
+Currently the file to process is hard-coded in:
+
+```python
+process_file(
+    Path("results_CORFU_1852_09.paths.txt")
+)
+```
+
+
