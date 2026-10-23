@@ -24,7 +24,11 @@ if the image contains multiple tables) and return it in a JSON file.
 This creates .paths.txt and .tree.txt text displays of the table structure described by JSON files.
 
 Currently it is set up to process any `results_<img-name>.json file in the current directory, and
-produces the two output files for each other.  Here are samples are both:
+produces the two output files for each other.
+
+The .paths files use " || " as the field separator (note the spaces around them) as this is unlikely to appear in a genuine column heading (whereas a "/" or ">" might do.
+
+Here are samples are both:
 
 results_CORFU_1853_01.paths.txt
 ```text
@@ -81,9 +85,11 @@ table_1
 
 This creates a JSON table structure schema file from a .paths.txt file.
 
-It warns about any neighbouring column headings that are slightly different, in case they are supposed to be the same but a typo has been introduced in one of them. If they are different, they will be put in different branches of the tree so it is important that inadvertent typos don't cause that to happen.
+The .paths files require " || " as the field separator (note the spaces around them), as produced by `show-table-structure.py`. When editing these files, ensure the same field separator (including spaces) is used.
 
-Currently the file to process is hard-coded in:
+The code warns about any neighbouring column headings that are slightly different, in case they are supposed to be the same but a typo has been introduced in one of them. If they are different, they will be put in different branches of the tree so it is important that inadvertent typos don't cause that to happen.
+
+Currently the file to process is hard-coded in these lines:
 
 ```python
 process_file(
