@@ -81,6 +81,8 @@ table_1
 
 This creates a JSON table structure schema file from a .paths.txt file.
 
+It warns about any neighbouring column headings that are slightly different, in case they are supposed to be the same but a typo has been introduced in one of them. If they are different, they will be put in different branches of the tree so it is important that inadvertent typos don't cause that to happen.
+
 Currently the file to process is hard-coded in:
 
 ```python
