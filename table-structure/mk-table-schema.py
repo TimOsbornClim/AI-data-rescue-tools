@@ -312,6 +312,6 @@ process_file(
 # ------------------------------------------------------------------
 # ...or process all .paths files:
 #
-# for p in sorted(Path('.').glob('*.paths')):
+# for p in sorted(Path('.').glob('*.paths.txt')):
 #     process_file(p)
 # ------------------------------------------------------------------
