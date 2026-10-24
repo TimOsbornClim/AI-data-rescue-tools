@@ -87,7 +87,38 @@ This creates a JSON table structure schema file from a .paths.txt file.
 
 The .paths files require " || " as the field separator (note the spaces around them), as produced by `show-table-structure.py`. When editing these files, ensure the same field separator (including spaces) is used.
 
-The code warns about any neighbouring column headings that are slightly different, in case they are supposed to be the same but a typo has been introduced in one of them. If they are different, they will be put in different branches of the tree so it is important that inadvertent typos don't cause that to happen.
+The code warns if the indicated "depth" doesn't match the number of branches e.g. if the .paths.txt file contains this line:
+
+`024 [depth=4] table_1 || Observations taken at 9.30 A.M. (Local Time). || Rain in previous 24 hours. || On Ground.`
+
+then the following warning will be given (because the "table_1" is an indicator for which table, not a column hierarchy within the table which has only a depth=3 for this example):
+
+```text
+RROR: Depth mismatch
+Line 24
+Recorded depth = 4
+Actual depth   = 3
+Column number  = 24
+Path           = table_1 || Observations taken at 9.30 A.M. (Local Time). || Rain in previous 24 hours. || On Ground.
+```
+
+
+The code also warns about any neighbouring column headings that are slightly different, in case they are supposed to be the same but a typo has been introduced in one of them. If they are different, they will be put in different branches of the tree so it is important that inadvertent typos don't cause that to happen. For example:
+
+```text
+Created: table_CORFU_185209-185508.paths.json
+
+Possible near-duplicate headings:
+
+--------------------------------
+Parent location:
+    table_1
+
+    'Observations taken at 9.30 A.M. (Local Time).'
+    'Observations taken at 3.30 P.M. (Local Time).'
+
+Similarity: 0.956
+```
 
 Currently the file to process is hard-coded in these lines:
 
