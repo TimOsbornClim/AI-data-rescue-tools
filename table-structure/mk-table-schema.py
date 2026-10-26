@@ -3,7 +3,7 @@
 """
 This tries to create a JSON schema file to describe a Table structure
 (with hierarchical headings, subheadings etc) from a .paths.txt file.
-The .paths.txt file could be created using 'cmp-table-structure.py' from
+The .paths.txt file could be created using 'show-table-structure.py' from
 an existing JSON schema file (e.g. one produced using AI header extraction
 for AI-based data rescue) but the .paths.txt file could then be manually
 edited to correct any mistakes and then this script could create a new,
@@ -16,98 +16,56 @@ import re
 from pathlib import Path
 from difflib import SequenceMatcher
 
-# ------------------------------------------------------------------
+# ------------------------------------------------------------
 # Configuration
-# ------------------------------------------------------------------
+# ------------------------------------------------------------
 
 SEPARATOR = " || "
 SIMILARITY_THRESHOLD = 0.90
 
-# ------------------------------------------------------------------
-# Utilities
-# ------------------------------------------------------------------
-
+# ------------------------------------------------------------
+# Similarity helper
+# ------------------------------------------------------------
 
 def similarity(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
 
-def get_or_create_child(children, header):
-    """
-    Return existing child if header matches exactly.
-    Otherwise create a new child.
-
-    No normalisation is performed.
-    """
-
-    for child in children:
-        if child["header"] == header:
-            return child
-
-    child = {
-        "header": header,
-        "subheaders": []
-    }
-
-    children.append(child)
-
-    return child
-
-
-# ------------------------------------------------------------------
-# Warning collection
-# ------------------------------------------------------------------
-
-warning_keys = set()
-warnings = []
-
-
-def check_for_near_duplicate(children, new_header, location):
-    """
-    Compare a new sibling heading against existing siblings.
-
-    Warn if very similar but not identical.
-    """
-
-    for child in children:
-
-        existing = child["header"]
-
-        if existing == new_header:
-            continue
-
-        score = similarity(existing, new_header)
-
-        if score >= SIMILARITY_THRESHOLD:
-
-            key = tuple(sorted([existing, new_header])) + (location,)
-
-            if key not in warning_keys:
-
-                warning_keys.add(key)
-
-                warnings.append(
-                    {
-                        "location": location,
-                        "existing": existing,
-                        "new": new_header,
-                        "score": score,
-                    }
-                )
-
-
-# ------------------------------------------------------------------
-# Main reconstruction
-# ------------------------------------------------------------------
-
+# ------------------------------------------------------------
+# Main parser
+# ------------------------------------------------------------
 
 def paths_to_schema(paths_file):
 
-    metadata = {}
-
+    # Create regular expression to parse each input line
+    # ^         start of line
+    # (\d+)     one or more digits, store as capture group 1
+    # \s+       one or more whitespace characters
+    # [depth=   [depth=
+    # (\d+)     one or more digits, store as capture group 2
+    # ]         ]
+    # \s+       one or more whitespace characters
+    # (.*)      capture everything else till the end of the line, as capture group 3
+    # $         end of line
+    
     line_re = re.compile(
         r'^(\d+)\s+\[depth=(\d+)\]\s+(.*)$'
     )
+
+    metadata = {}
+
+    #
+    # State from immediately previous path
+    #
+    previous_table = None
+    previous_headers = []
+    previous_nodes = []
+    previous_lineno = None
+
+    #
+    # Duplicate full-path detection
+    #
+    seen_paths = {}
 
     with open(paths_file, encoding="utf-8") as f:
 
@@ -122,8 +80,7 @@ def paths_to_schema(paths_file):
 
             if not m:
                 raise ValueError(
-                    f"Line {lineno}: "
-                    f"Cannot parse:\n{line}"
+                    f"Cannot parse line {lineno}:\n{line}"
                 )
 
             colno = int(m.group(1))
@@ -138,35 +95,114 @@ def paths_to_schema(paths_file):
             if len(parts) < 2:
                 raise ValueError(
                     f"Line {lineno}: "
-                    "Path must contain table name "
-                    "and at least one column heading."
+                    f"must contain table name and at least one heading."
                 )
 
             table_name = parts[0]
             headers = parts[1:]
 
+            # ----------------------------------------------------
+            # Depth validation
+            # ----------------------------------------------------
+
             actual_depth = len(headers)
 
             if actual_depth != recorded_depth:
 
+                print("\nERROR: Depth mismatch")
+                print(f"Line            : {lineno}")
+                print(f"Column number   : {colno}")
+                print(f"Recorded depth  : {recorded_depth}")
+                print(f"Actual depth    : {actual_depth}")
+                print(f"Path            : {remainder}")
+
+            # ----------------------------------------------------
+            # Duplicate-path warning
+            # ----------------------------------------------------
+
+            path_key = tuple(parts)
+
+            if path_key in seen_paths:
+
+                print("\nWARNING: Duplicate path")
+
                 print(
-                    f"\nERROR: Depth mismatch"
+                    f"First occurrence : "
+                    f"line {seen_paths[path_key]}"
                 )
+
                 print(
-                    f"Line {lineno}"
+                    f"Current line     : "
+                    f"{lineno}"
                 )
+
                 print(
-                    f"Recorded depth = {recorded_depth}"
+                    f"Path             : "
+                    f"{remainder}"
                 )
-                print(
-                    f"Actual depth   = {actual_depth}"
+
+            else:
+
+                seen_paths[path_key] = lineno
+
+            # ----------------------------------------------------
+            # Similarity warnings
+            # Only compare against previous line
+            # ----------------------------------------------------
+
+            if previous_table == table_name:
+
+                max_depth = min(
+                    len(previous_headers),
+                    len(headers)
                 )
-                print(
-                    f"Column number  = {colno}"
-                )
-                print(
-                    f"Path           = {remainder}\n"
-                )
+
+                for level in range(max_depth):
+
+                    previous_header = previous_headers[level]
+                    current_header = headers[level]
+
+                    if previous_header == current_header:
+                        continue
+
+                    score = similarity(
+                        previous_header,
+                        current_header
+                    )
+
+                    if score >= SIMILARITY_THRESHOLD:
+
+                        print(
+                            "\nWARNING: Similar headings in adjacent paths"
+                        )
+
+                        print(
+                            f"Previous line : {previous_lineno}"
+                        )
+
+                        print(
+                            f"Current line  : {lineno}"
+                        )
+
+                        print(
+                            f"Depth         : {level + 1}"
+                        )
+
+                        print(
+                            f"\n    '{previous_header}'"
+                        )
+
+                        print(
+                            f"    '{current_header}'"
+                        )
+
+                        print(
+                            f"\nSimilarity: {score:.3f}"
+                        )
+
+            # ----------------------------------------------------
+            # Create table if required
+            # ----------------------------------------------------
 
             if table_name not in metadata:
 
@@ -176,71 +212,92 @@ def paths_to_schema(paths_file):
 
             columns = metadata[table_name]["columns"]
 
-            # ----------------------------------------------------------
-            # Top level
-            # ----------------------------------------------------------
+            # ----------------------------------------------------
+            # Longest common prefix with previous path
+            # ----------------------------------------------------
 
-            top_header = headers[0]
+            if table_name != previous_table:
 
-            check_for_near_duplicate(
-                columns,
-                top_header,
-                f"{table_name}"
-            )
+                common_prefix = 0
 
-            current = get_or_create_child(
-                columns,
-                top_header
-            )
+            else:
 
-            # ----------------------------------------------------------
-            # Remaining levels
-            # ----------------------------------------------------------
+                common_prefix = 0
 
-            parent_path = [top_header]
+                while (
+                    common_prefix < len(headers)
+                    and common_prefix < len(previous_headers)
+                    and headers[common_prefix]
+                    == previous_headers[common_prefix]
+                ):
 
-            for header in headers[1:]:
+                    common_prefix += 1
 
-                location = (
-                    f"{table_name}"
-                    f"{SEPARATOR}"
-                    f"{SEPARATOR.join(parent_path)}"
-                )
+            # ----------------------------------------------------
+            # Determine parent for new nodes
+            # ----------------------------------------------------
 
-                check_for_near_duplicate(
-                    current["subheaders"],
-                    header,
-                    location
-                )
+            if common_prefix == 0:
 
-                current = get_or_create_child(
-                    current["subheaders"],
-                    header
-                )
+                parent_children = columns
 
-                parent_path.append(header)
+            else:
+
+                parent_node = previous_nodes[
+                    common_prefix - 1
+                ]
+
+                parent_children = parent_node[
+                    "subheaders"
+                ]
+
+            # ----------------------------------------------------
+            # Reuse common-prefix nodes and create new
+            # nodes after divergence
+            # ----------------------------------------------------
+
+            current_nodes = previous_nodes[
+                :common_prefix
+            ]
+
+            for header in headers[common_prefix:]:
+
+                node = {
+                    "header": header,
+                    "subheaders": []
+                }
+
+                parent_children.append(node)
+
+                current_nodes.append(node)
+
+                parent_children = node["subheaders"]
+
+            # ----------------------------------------------------
+            # Save current path as previous path
+            # ----------------------------------------------------
+
+            previous_table = table_name
+            previous_headers = headers
+            previous_nodes = current_nodes
+            previous_lineno = lineno
 
     return {
         "metadata": metadata
     }
 
 
-# ------------------------------------------------------------------
+# ------------------------------------------------------------
 # Driver
-# ------------------------------------------------------------------
-
+# ------------------------------------------------------------
 
 def process_file(paths_file):
 
-    global warnings
-    global warning_keys
-
-    warnings = []
-    warning_keys = set()
-
     schema = paths_to_schema(paths_file)
 
-    output_json = paths_file.with_suffix(".json")
+    output_json = paths_file.with_suffix(
+        ".json"
+    )
 
     with open(
         output_json,
@@ -255,63 +312,24 @@ def process_file(paths_file):
             ensure_ascii=False
         )
 
-    print(
-        f"\nCreated: {output_json}"
-    )
-
-    # --------------------------------------------------------------
-    # Warning report
-    # --------------------------------------------------------------
-
-    if warnings:
-
-        print(
-            "\nPossible near-duplicate headings:"
-        )
-
-        for w in sorted(
-            warnings,
-            key=lambda x: -x["score"]
-        ):
-
-            print("\n--------------------------------")
-
-            print(
-                f"Parent location:\n"
-                f"    {w['location']}"
-            )
-
-            print(
-                f"\n    '{w['existing']}'"
-            )
-
-            print(
-                f"    '{w['new']}'"
-            )
-
-            print(
-                f"\nSimilarity: "
-                f"{w['score']:.3f}"
-            )
-
-    else:
-
-        print(
-            "\nNo near-duplicate headings found."
-        )
+    print(f"\nCreated {output_json}")
 
 
-# ------------------------------------------------------------------
-# Either process one file...
-# ------------------------------------------------------------------
+# ------------------------------------------------------------
+# Process one file
+# ------------------------------------------------------------
+
+#fn="results_CORFU_1852_09.paths.txt"
+fn="table_CORFU_185209-185508.paths.txt"
 
 process_file(
-    Path("results_CORFU_1852_09.paths.txt")
+    Path(fn)
 )
 
-# ------------------------------------------------------------------
-# ...or process all .paths files:
+# ------------------------------------------------------------
+# Or process all .paths files
+# ------------------------------------------------------------
 #
-# for p in sorted(Path('.').glob('*.paths.txt')):
+# for p in sorted(Path(".").glob("*.paths.txt")):
 #     process_file(p)
-# ------------------------------------------------------------------
+#

@@ -9,13 +9,17 @@ But JSON files of table structures are not easy to read by humans nor are they e
 1. Give an image of a data table to AI and ask it to identify the table structure (or more than one
 if the image contains multiple tables) and return it in a JSON file.
 
-2. Use show-table-structure.py to convert the JSON file into viewable .paths and .tree files.
+2. This can be repeated to obtain AI-generated JSON table structures (schema) for a selection of images to test if they have similar layouts.
 
-3. View these files to check if they match the actual table structure.
+3. Use show-table-structure.py to convert the JSON files into viewable .paths and .tree files.
 
-4. If they do not match perfectly, then edit the .paths file so it is correct,
+4. View these files to check if they match the actual table structure.
 
-5. Use mk-table-schema.py to create a JSON schema from the edited .paths file. This will warn about any neighbouring column headings that are slightly different, in case they are supposed to be the same but a typo has been introduced in one of them.
+5. If they do not match perfectly, then edit the .paths file so it is correct,
+
+6. Use mk-table-schema.py to create a JSON schema from the edited .paths file. This will warn about any neighbouring column headings that are slightly different, in case they are supposed to be the same but a typo has been introduced in one of them.
+
+7. This curated JSON schema can be used for multiple images that use the same table structure. 
 
 
 
@@ -119,6 +123,10 @@ Parent location:
 
 Similarity: 0.956
 ```
+
+
+The code also lists a warning if any complete paths (i.e. all the branch and leaf headings) are identical, whether they are in adjacent lines or not. This is not necessarily wrong, but the warning is useful because it means that the position of the columns within the table is necessary to provide the context needed to distinguish identically labelled columns.
+
 
 Currently the file to process is hard-coded in these lines:
 
